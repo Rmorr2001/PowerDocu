@@ -23,14 +23,14 @@ public sealed class BrowserGenerationServiceTests
     }
 
     [Fact]
-    public void Reports_non_html_formats_as_incomplete()
+    public void Reports_formats_outside_the_browser_contract()
     {
         NotSupportedException exception = Assert.Throws<NotSupportedException>(() =>
             new BrowserGenerationService().GenerateArchive(
                 SyntheticMsappFactory.Create(),
                 "synthetic.msapp",
-                "{\"outputFormat\":\"word\"}"));
-        Assert.Contains("HTML output only", exception.Message);
+                "{\"outputFormat\":\"markdown\"}"));
+        Assert.Contains("Word or HTML", exception.Message);
     }
 
     [Fact]

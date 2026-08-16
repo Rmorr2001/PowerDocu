@@ -24,4 +24,14 @@ public sealed class BrowserGenerationOptionsTests
         Assert.False(config.documentAppVariables);
         Assert.False(config.checkForUpdatesOnLaunch);
     }
+
+    [Fact]
+    public void Maps_word_output_to_upstream_configuration()
+    {
+        BrowserGenerationOptions options = BrowserGenerationOptions.Parse("""
+            { "outputFormat": "word" }
+            """);
+
+        Assert.Equal(OutputFormatHelper.Word, options.ToPowerDocuConfig().outputFormat);
+    }
 }

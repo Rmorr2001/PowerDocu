@@ -19,6 +19,8 @@
                       LogicalName="PowerDocu.Web.Resources.DefaultSettings.ControlDefaultSetting.json" />
     <EmbeddedResource Include="..\modules\PowerDocu.Common\PowerDocu.Common\Resources\DefaultSettings\ScreenDefaultSetting.json"
                       LogicalName="PowerDocu.Web.Resources.DefaultSettings.ScreenDefaultSetting.json" />
+    <EmbeddedResource Include="..\modules\PowerDocu.Common\PowerDocu.Common\Resources\styles.xml"
+                      LogicalName="PowerDocu.Web.Resources.styles.xml" />
   </ItemGroup>
 
 </Project>

@@ -63,19 +63,9 @@ namespace PowerDocu.AppDocumenter
                 assetRenderer,
                 (content, config) =>
                 {
-                    string wordTemplate = (!String.IsNullOrEmpty(config.wordTemplate) && File.Exists(config.wordTemplate))
-                        ? config.wordTemplate : null;
                     if (config.outputFormat.Equals(OutputFormatHelper.Word) || config.outputFormat.Equals(OutputFormatHelper.All))
                     {
-                        NotificationHelper.SendNotification("Creating Word documentation");
-                        if (wordTemplate == null)
-                        {
-                            AppWordDocBuilder wordzip = new AppWordDocBuilder(content, null, config.documentDefaultValuesCanvasApps, config.documentDefaultValuesCanvasApps, config.documentSampleData, config.addTableOfContents);
-                        }
-                        else
-                        {
-                            AppWordDocBuilder wordzip = new AppWordDocBuilder(content, wordTemplate, config.documentChangesOnlyCanvasApps, config.documentDefaultValuesCanvasApps, config.documentSampleData, config.addTableOfContents);
-                        }
+                        BuildWord(content, config);
                     }
                     if (config.outputFormat.Equals(OutputFormatHelper.Markdown) || config.outputFormat.Equals(OutputFormatHelper.All))
                     {
@@ -102,10 +92,37 @@ namespace PowerDocu.AppDocumenter
             GenerateOutputCore(context, path, graphRenderer, assetRenderer, BuildHtml);
         }
 
+        /// <summary>
+        /// Browser-safe Word entry point. The caller supplies managed/browser
+        /// graph and asset renderers so native desktop dependencies can be trimmed.
+        /// </summary>
+        public static void GenerateWordOutput(
+            DocumentationContext context,
+            string path,
+            IAppGraphRenderer graphRenderer,
+            IAppAssetRenderer assetRenderer)
+        {
+            GenerateOutputCore(context, path, graphRenderer, assetRenderer, BuildWord);
+        }
+
         private static void BuildHtml(AppDocumentationContent content, ConfigHelper config)
         {
             NotificationHelper.SendNotification("Creating HTML documentation");
             AppHtmlBuilder htmlFile = new AppHtmlBuilder(content, config.documentChangesOnlyCanvasApps, config.documentDefaultValuesCanvasApps, config.documentSampleData);
+        }
+
+        private static void BuildWord(AppDocumentationContent content, ConfigHelper config)
+        {
+            NotificationHelper.SendNotification("Creating Word documentation");
+            string wordTemplate = (!String.IsNullOrEmpty(config.wordTemplate) && File.Exists(config.wordTemplate))
+                ? config.wordTemplate : null;
+            _ = new AppWordDocBuilder(
+                content,
+                wordTemplate,
+                config.documentChangesOnlyCanvasApps,
+                config.documentDefaultValuesCanvasApps,
+                config.documentSampleData,
+                config.addTableOfContents);
         }
 
         private static void GenerateOutputCore(

@@ -4,26 +4,27 @@ namespace PowerDocu.Web.Adapters;
 
 public static class BrowserResourceSeeder
 {
-    private const string ResourcePrefix = "PowerDocu.Web.Resources.DefaultSettings.";
-    private static readonly string[] DefaultFiles =
+    private static readonly (string ResourceName, string RelativePath)[] ResourceFiles =
     {
-        "AppDefaultSetting.json",
-        "ControlDefaultSetting.json",
-        "ScreenDefaultSetting.json"
+        ("PowerDocu.Web.Resources.DefaultSettings.AppDefaultSetting.json", "DefaultSettings/AppDefaultSetting.json"),
+        ("PowerDocu.Web.Resources.DefaultSettings.ControlDefaultSetting.json", "DefaultSettings/ControlDefaultSetting.json"),
+        ("PowerDocu.Web.Resources.DefaultSettings.ScreenDefaultSetting.json", "DefaultSettings/ScreenDefaultSetting.json"),
+        ("PowerDocu.Web.Resources.styles.xml", "styles.xml")
     };
     private static bool seeded;
 
     public static void EnsureAvailable()
     {
         if (seeded) return;
-        string outputFolder = Path.Combine(AppContext.BaseDirectory, "Resources", "DefaultSettings");
-        Directory.CreateDirectory(outputFolder);
+        string outputFolder = Path.Combine(AppContext.BaseDirectory, "Resources");
         Assembly assembly = typeof(BrowserResourceSeeder).Assembly;
-        foreach (string fileName in DefaultFiles)
+        foreach ((string resourceName, string relativePath) in ResourceFiles)
         {
-            using Stream source = assembly.GetManifestResourceStream(ResourcePrefix + fileName)
-                ?? throw new InvalidOperationException($"Embedded PowerDocu resource '{fileName}' was not found.");
-            using Stream destination = File.Create(Path.Combine(outputFolder, fileName));
+            using Stream source = assembly.GetManifestResourceStream(resourceName)
+                ?? throw new InvalidOperationException($"Embedded PowerDocu resource '{resourceName}' was not found.");
+            string destinationPath = Path.Combine(outputFolder, relativePath);
+            Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
+            using Stream destination = File.Create(destinationPath);
             source.CopyTo(destination);
         }
         seeded = true;

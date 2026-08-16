@@ -9,7 +9,7 @@ export type WorkerEvent = {
 };
 
 export type GenerationOptions = {
-  outputFormat: 'html';
+  outputFormat: 'word' | 'html';
   fullDocumentation: boolean;
   changesOnly: boolean;
   includeDefaultValues: boolean;
@@ -85,7 +85,7 @@ export class PowerDocuWorkerClient {
       // the original rejection when they await this.readyPromise.
     });
 
-    const worker = new Worker('/engine/worker.js', {
+    const worker = new Worker(new URL('./powerdocu.worker.ts', import.meta.url), {
       type: 'module',
       name: 'powerdocu-local-runtime',
     });

@@ -8,7 +8,10 @@ namespace PowerDocu.Web.Runtime;
 [SupportedOSPlatform("browser")]
 public static partial class BrowserFacade
 {
-    private static readonly BrowserGenerationService Service = new();
+    private static readonly BrowserGenerationService Service = new(
+        new BrowserGraphvizAppGraphRenderer(
+            BrowserInterop.RenderGraphvizSvg,
+            svg => Convert.FromBase64String(BrowserInterop.RasterizeSvgToPngBase64(svg))));
 
     static BrowserFacade()
     {
@@ -49,4 +52,10 @@ internal static partial class BrowserInterop
 {
     [JSImport("postEvent", "powerdocu-worker")]
     internal static partial void PostEvent(string kind, string message);
+
+    [JSImport("renderGraphvizSvg", "powerdocu-worker")]
+    internal static partial string RenderGraphvizSvg(string dot);
+
+    [JSImport("rasterizeSvgToPngBase64", "powerdocu-worker")]
+    internal static partial string RasterizeSvgToPngBase64(string svg);
 }

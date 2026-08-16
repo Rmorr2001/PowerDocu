@@ -17,4 +17,5 @@ export default defineConfig({
   },
   server: { headers: isolationHeaders },
   preview: { headers: isolationHeaders },
+  worker: { format: 'es' },
 });

@@ -7,7 +7,9 @@ import {
   DownloadIcon,
   FileArchiveIcon,
   FileCode2Icon,
+  FileTextIcon,
   FolderDownIcon,
+  Globe2Icon,
   RotateCcwIcon,
   SquareIcon,
   UploadCloudIcon,
@@ -16,9 +18,11 @@ import {
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Field } from '@/components/ui/field';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { formatBytes, formatDuration } from '@/format';
 import {
   PowerDocuWorkerClient,
@@ -30,6 +34,7 @@ import {
 const MAX_INPUT_BYTES = 100 * 1024 * 1024;
 
 type LogEntry = WorkerEvent & { id: number; time: string };
+type OutputFormat = GenerationOptions['outputFormat'];
 
 type BrowserDirectoryHandle = {
   getDirectoryHandle(name: string, options: { create: true }): Promise<BrowserDirectoryHandle>;
@@ -55,6 +60,7 @@ export function App() {
   const [uptimeSeconds, setUptimeSeconds] = useState(0);
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [outputFormat, setOutputFormat] = useState<OutputFormat>('word');
   const [instructionsOpen, setInstructionsOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -149,7 +155,7 @@ export function App() {
     const startedAt = performance.now();
 
     const options: GenerationOptions = {
-      outputFormat: 'html',
+      outputFormat,
       fullDocumentation: true,
       changesOnly: true,
       includeDefaultValues: true,
@@ -185,7 +191,7 @@ export function App() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `${file.name.replace(/\.msapp$/i, '')}-powerdocu-html.zip`;
+    anchor.download = `${file.name.replace(/\.msapp$/i, '')}-powerdocu-${outputFormat}.zip`;
     document.body.append(anchor);
     anchor.click();
     anchor.remove();
@@ -228,6 +234,16 @@ export function App() {
     inputRef.current.click();
   }
 
+  function selectOutputFormat(value: OutputFormat) {
+    setOutputFormat(value);
+    setArchive(null);
+    setElapsed(null);
+    setGenerationError(null);
+    setPhase(file ? 'Ready' : 'Idle');
+  }
+
+  const outputLabel = outputFormat === 'word' ? 'Word' : 'HTML';
+
   return (
     <main className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border">
@@ -258,7 +274,7 @@ export function App() {
         </div>
         {instructionsOpen && (
           <div id="instructions" className="mx-auto max-w-4xl border-t border-border px-5 py-3 text-xs text-muted-foreground">
-            Upload a .msapp, generate the full report, then download the ZIP or save its files to a folder.
+            Upload a .msapp, choose Word or HTML, then download the complete report or save its folder.
           </div>
         )}
       </header>
@@ -307,6 +323,44 @@ export function App() {
             )}
           </button>
           {fileError && <p className="mt-3 text-sm text-destructive">{fileError}</p>}
+          {file && !isGenerating && (
+            <div className="mt-4 flex flex-col gap-2">
+              <Button variant="ghost" onClick={openFilePicker}>
+                <RotateCcwIcon data-icon="inline-start" />
+                Replace file
+              </Button>
+            </div>
+          )}
+        </section>
+
+        <Separator />
+
+        <section className="py-9" aria-labelledby="output-heading">
+          <SectionHeading id="output-heading" index="02" title="Output" />
+          <Field className="mt-5">
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              size="lg"
+              spacing={0}
+              value={outputFormat}
+              disabled={isGenerating}
+              onValueChange={(value) => {
+                if (value === 'word' || value === 'html') selectOutputFormat(value);
+              }}
+              className="w-full"
+              aria-label="Report output format"
+            >
+              <ToggleGroupItem value="word" className="flex-1" aria-label="Word document">
+                <FileTextIcon data-icon="inline-start" />
+                Word document
+              </ToggleGroupItem>
+              <ToggleGroupItem value="html" className="flex-1" aria-label="HTML report">
+                <Globe2Icon data-icon="inline-start" />
+                HTML report
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </Field>
           <div className="mt-4 flex flex-col gap-2">
             {isGenerating ? (
               <Button variant="destructive" size="lg" onClick={cancel}>
@@ -319,12 +373,6 @@ export function App() {
                 Generate full report
               </Button>
             )}
-            {file && !isGenerating && (
-              <Button variant="ghost" onClick={openFilePicker}>
-                <RotateCcwIcon data-icon="inline-start" />
-                Replace file
-              </Button>
-            )}
           </div>
         </section>
 
@@ -332,7 +380,7 @@ export function App() {
 
         <section className="py-9" aria-labelledby="logs-heading">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <SectionHeading id="logs-heading" index="02" title="Logs & uptime" />
+            <SectionHeading id="logs-heading" index="03" title="Logs & uptime" />
             <Badge variant="outline" className="font-mono">
               UP {formatDuration(uptimeSeconds)}
             </Badge>
@@ -372,13 +420,13 @@ export function App() {
 
         <section className="py-9" aria-labelledby="download-heading">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <SectionHeading id="download-heading" index="03" title="Download" />
+            <SectionHeading id="download-heading" index="04" title="Download" />
             {archive && <Badge variant="outline">{formatBytes(archive.byteLength)} · {elapsed === null ? 'Ready' : `${(elapsed / 1000).toFixed(2)} s`}</Badge>}
           </div>
           <div className="mt-5 flex flex-col gap-2">
             <Button size="lg" disabled={!archive} onClick={download}>
               <DownloadIcon data-icon="inline-start" />
-              Download complete ZIP
+              Download complete {outputLabel} ZIP
             </Button>
             <Button
               variant="outline"
@@ -388,7 +436,7 @@ export function App() {
               title={folderExportAvailable ? undefined : 'Folder export is unavailable in this browser.'}
             >
               {isSavingFolder ? <Spinner data-icon="inline-start" /> : <FolderDownIcon data-icon="inline-start" />}
-              Save complete folder
+              Save complete {outputLabel} folder
             </Button>
           </div>
         </section>
