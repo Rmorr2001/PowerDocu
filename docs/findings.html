@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PowerDocu browser adapter — findings</title><link rel="stylesheet" href="styles.css"></head>
+<body>
+<nav><a href="index.html">Status</a><a href="findings.html">Findings</a><a href="options.html">Options</a><a href="decisions.html">Decisions</a><a href="plan.html">Plan</a></nav>
+<main>
+  <h1>Source findings</h1>
+  <h2>Repository execution model</h2>
+  <p><code>PowerDocuCLI</code> and <code>PowerDocuForm</code> dispatch <code>.msapp</code> to <code>AppDocumentationGenerator</code> and <code>.zip</code> to <code>SolutionDocumentationGenerator</code>. The solution path orchestrates Canvas apps, cloud flows, agents, model-driven apps, business process flows, desktop flows, classic workflows, dataflows, AI models, and solution documentation through separate documenter projects.</p>
+  <p>Upstream output selection is <code>All</code>, <code>Word</code>, <code>Html</code>, or <code>Markdown</code>. <code>ConfigHelper</code> also defines Canvas changed/default behavior, sample data, Flow sort order, Word template and table-of-contents behavior, component inclusion flags, default columns, graph completeness, and update checking.</p>
+
+  <h2>Canvas dependency classification</h2>
+  <table>
+    <thead><tr><th>Area</th><th>Class / dependency</th><th>Classification</th><th>Evidence and consequence</th></tr></thead>
+    <tbody>
+      <tr><td>Parsing</td><td><code>AppParser</code>, <code>AppEntity</code>, <code>ControlEntity</code></td><td>Retain</td><td>The unchanged parser and entity graph complete in browser WebAssembly against the private fixture.</td></tr>
+      <tr><td>Power Fx</td><td><code>Microsoft.PowerFx.Core.Engine</code>, <code>FormulaVisitor</code></td><td>Retain</td><td>Runs in WebAssembly when ICU and the <code>en-US</code> Power Fx satellite assembly are shipped.</td></tr>
+      <tr><td>Content</td><td><code>AppDocumentationContent</code></td><td>Retain with injection</td><td>Content ordering and section preparation remain; an <code>IAppAssetRenderer</code> is supplied at construction.</td></tr>
+      <tr><td>HTML</td><td><code>AppHtmlBuilder</code></td><td>Retain</td><td>The existing builder generates the browser HTML tree. Logo and icon side effects delegate to the asset interface.</td></tr>
+      <tr><td>Markdown</td><td><code>AppMarkdownBuilder</code></td><td>Exclude temporarily</td><td>The builder still contains direct <code>System.Drawing</code> resource-preview work. It is not exposed by the browser service.</td></tr>
+      <tr><td>Word</td><td><code>AppWordDocBuilder</code>, Open XML</td><td>Exclude temporarily</td><td>Open XML itself publishes to WebAssembly; image dimension/raster operations still call <code>System.Drawing</code>. Browser parity has not been proven.</td></tr>
+      <tr><td>Graphs</td><td><code>Rubjerg.Graphviz</code></td><td>Adapt</td><td>The native package is not browser WebAssembly compatible. <code>IAppGraphRenderer</code> keeps Graphviz as the desktop default and supplies managed SVG in browser.</td></tr>
+      <tr><td>Images</td><td><code>System.Drawing</code>, <code>Svg</code></td><td>Adapt</td><td><code>IAppAssetRenderer</code> keeps the desktop renderer and gives browser output source SVG control icons plus original logo bytes. PNG and compositing remain gaps.</td></tr>
+      <tr><td>Filesystem</td><td><code>System.IO</code> physical paths</td><td>Adapt</td><td>WebAssembly virtual storage backs a unique workspace. <code>BrowserWorkspace</code> collects relative output paths into ZIP and deletes the workspace on dispose.</td></tr>
+      <tr><td>Configuration</td><td><code>ConfigHelper</code></td><td>Adapt</td><td><code>BrowserGenerationOptions</code> constructs an in-memory config; AppData persistence and update checks are bypassed.</td></tr>
+      <tr><td>Defaults</td><td><code>DefaultChangeHelper</code></td><td>Adapt</td><td>Default JSON files are embedded and seeded. A transient submodule patch makes their paths platform-neutral.</td></tr>
+      <tr><td>UI / OS</td><td>WinForms, native dialogs, Explorer, AppData, update checks</td><td>Desktop only</td><td>These host behaviors are not part of browser document semantics.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Intentional retained-core files</h2>
+  <p><code>eng/core-diff-allowlist.txt</code> is enforced by <code>scripts/check-core-diff.sh</code>. Changes are confined to Canvas generation seams, output-path composition, asset/graph interfaces and desktop implementations, and trim metadata. The pinned Common submodule remains clean; <code>eng/patches/powerdocu-common-browser-paths.patch</code> is applied and reversed during the browser build.</p>
+
+  <h2>Archive boundary</h2>
+  <p><code>BrowserArchiveGuard</code> limits input to 100 MB, expanded content to 512 MB, individual entries to 128 MB, entries to 10,000, and compression ratio to 200:1. It rejects unreadable ZIPs, absolute paths, drive paths, relative traversal, empty path segments, and case/slash-equivalent duplicates. Processing occurs under a GUID workspace, not a shared extraction path.</p>
+
+  <h2>Known evidence limits</h2>
+  <ul>
+    <li>The original desktop workflow did not finish in the Linux baseline container; native Graphviz ran, then Windows resource-path assumptions stopped documentation generation.</li>
+    <li>Section flags such as <code>documentAppVariables</code> exist in <code>ConfigHelper</code> but are not consumed by the Canvas HTML builder, so they are not shown in the browser UI.</li>
+    <li>Trimming reports reflection warnings in the retained Newtonsoft/JObject parser. Synthetic and private acceptance pass; broader package variance remains a test requirement.</li>
+  </ul>
+</main>
+</body>
+</html>

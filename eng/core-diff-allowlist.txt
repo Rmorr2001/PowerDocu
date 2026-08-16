@@ -1,0 +1,10 @@
+PowerDocu.AppDocumenter/AppDocumentationContent.cs
+PowerDocu.AppDocumenter/AppDocumentationGenerator.cs
+PowerDocu.AppDocumenter/AppHtmlBuilder.cs
+PowerDocu.AppDocumenter/AppMarkdownBuilder.cs
+PowerDocu.AppDocumenter/AppOutputPath.cs
+PowerDocu.AppDocumenter/GraphvizAppGraphRenderer.cs
+PowerDocu.AppDocumenter/IAppAssetRenderer.cs
+PowerDocu.AppDocumenter/IAppGraphRenderer.cs
+PowerDocu.AppDocumenter/PowerDocu.AppDocumenter.csproj
+PowerDocu.AppDocumenter/SystemDrawingAppAssetRenderer.cs

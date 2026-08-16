@@ -1,0 +1,15 @@
+<linker>
+  <!-- DefaultChangeHelper materializes these retained model types through
+       Newtonsoft.Json reflection, so their constructors and setters must stay. -->
+  <assembly fullname="PowerDocu.Common">
+    <type fullname="PowerDocu.Common.Entity" preserve="all" />
+    <type fullname="PowerDocu.Common.Cdprevision" preserve="all" />
+    <type fullname="PowerDocu.Common.Wadlmetadata" preserve="all" />
+    <type fullname="PowerDocu.Common.Template" preserve="all" />
+    <type fullname="PowerDocu.Common.OverridableProperties" preserve="all" />
+    <type fullname="PowerDocu.Common.Controlthisitemtype" preserve="all" />
+    <type fullname="PowerDocu.Common.Dataentitymetadatajson" preserve="all" />
+    <type fullname="PowerDocu.Common.Connecteddatasourceinfonamemapping" preserve="all" />
+    <type fullname="PowerDocu.Common.Controlpropertystate" preserve="all" />
+  </assembly>
+</linker>

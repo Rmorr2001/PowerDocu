@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsTrimmable>true</IsTrimmable>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PowerDocu.AppDocumenter\PowerDocu.AppDocumenter.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\modules\PowerDocu.Common\PowerDocu.Common\Resources\DefaultSettings\AppDefaultSetting.json"
+                      LogicalName="PowerDocu.Web.Resources.DefaultSettings.AppDefaultSetting.json" />
+    <EmbeddedResource Include="..\modules\PowerDocu.Common\PowerDocu.Common\Resources\DefaultSettings\ControlDefaultSetting.json"
+                      LogicalName="PowerDocu.Web.Resources.DefaultSettings.ControlDefaultSetting.json" />
+    <EmbeddedResource Include="..\modules\PowerDocu.Common\PowerDocu.Common\Resources\DefaultSettings\ScreenDefaultSetting.json"
+                      LogicalName="PowerDocu.Web.Resources.DefaultSettings.ScreenDefaultSetting.json" />
+  </ItemGroup>
+
+</Project>

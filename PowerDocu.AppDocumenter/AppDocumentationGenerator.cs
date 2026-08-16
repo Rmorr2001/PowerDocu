@@ -2,10 +2,8 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using PowerDocu.Common;
-using Rubjerg.Graphviz;
 
 namespace PowerDocu.AppDocumenter
 {
@@ -25,11 +23,15 @@ namespace PowerDocu.AppDocumenter
                 return (null, null);
             }
 
-            string path = outputPath == null ? Path.GetDirectoryName(filePath) : $"{outputPath}/{Path.GetFileNameWithoutExtension(filePath)}";
+            string path = outputPath == null
+                ? Path.GetDirectoryName(filePath)
+                : Path.Combine(outputPath, Path.GetFileNameWithoutExtension(filePath));
             AppParser appParserFromZip = new AppParser(filePath);
             if (outputPath == null && appParserFromZip.packageType == AppParser.PackageType.SolutionPackage)
             {
-                path += @"\Solution " + CharsetHelper.GetSafeName(Path.GetFileNameWithoutExtension(filePath));
+                path = Path.Combine(
+                    path,
+                    "Solution " + CharsetHelper.GetSafeName(Path.GetFileNameWithoutExtension(filePath)));
             }
             List<AppEntity> apps = appParserFromZip.getApps();
             NotificationHelper.SendNotification($"AppParser: Parsed {apps.Count} app(s) from {filePath}.");
@@ -41,6 +43,78 @@ namespace PowerDocu.AppDocumenter
         /// </summary>
         public static void GenerateOutput(DocumentationContext context, string path)
         {
+            GenerateOutput(
+                context,
+                path,
+                new GraphvizAppGraphRenderer(),
+                new SystemDrawingAppAssetRenderer());
+        }
+
+        public static void GenerateOutput(
+            DocumentationContext context,
+            string path,
+            IAppGraphRenderer graphRenderer,
+            IAppAssetRenderer assetRenderer)
+        {
+            GenerateOutputCore(
+                context,
+                path,
+                graphRenderer,
+                assetRenderer,
+                (content, config) =>
+                {
+                    string wordTemplate = (!String.IsNullOrEmpty(config.wordTemplate) && File.Exists(config.wordTemplate))
+                        ? config.wordTemplate : null;
+                    if (config.outputFormat.Equals(OutputFormatHelper.Word) || config.outputFormat.Equals(OutputFormatHelper.All))
+                    {
+                        NotificationHelper.SendNotification("Creating Word documentation");
+                        if (wordTemplate == null)
+                        {
+                            AppWordDocBuilder wordzip = new AppWordDocBuilder(content, null, config.documentDefaultValuesCanvasApps, config.documentDefaultValuesCanvasApps, config.documentSampleData, config.addTableOfContents);
+                        }
+                        else
+                        {
+                            AppWordDocBuilder wordzip = new AppWordDocBuilder(content, wordTemplate, config.documentChangesOnlyCanvasApps, config.documentDefaultValuesCanvasApps, config.documentSampleData, config.addTableOfContents);
+                        }
+                    }
+                    if (config.outputFormat.Equals(OutputFormatHelper.Markdown) || config.outputFormat.Equals(OutputFormatHelper.All))
+                    {
+                        NotificationHelper.SendNotification("Creating Markdown documentation");
+                        AppMarkdownBuilder markdownFile = new AppMarkdownBuilder(content);
+                    }
+                    if (config.outputFormat.Equals(OutputFormatHelper.Html) || config.outputFormat.Equals(OutputFormatHelper.All))
+                    {
+                        BuildHtml(content, config);
+                    }
+                });
+        }
+
+        /// <summary>
+        /// Browser-safe HTML entry point. Keeping this output-specific seam lets
+        /// WebAssembly trimming remove desktop-only Word and Markdown dependencies.
+        /// </summary>
+        public static void GenerateHtmlOutput(
+            DocumentationContext context,
+            string path,
+            IAppGraphRenderer graphRenderer,
+            IAppAssetRenderer assetRenderer)
+        {
+            GenerateOutputCore(context, path, graphRenderer, assetRenderer, BuildHtml);
+        }
+
+        private static void BuildHtml(AppDocumentationContent content, ConfigHelper config)
+        {
+            NotificationHelper.SendNotification("Creating HTML documentation");
+            AppHtmlBuilder htmlFile = new AppHtmlBuilder(content, config.documentChangesOnlyCanvasApps, config.documentDefaultValuesCanvasApps, config.documentSampleData);
+        }
+
+        private static void GenerateOutputCore(
+            DocumentationContext context,
+            string path,
+            IAppGraphRenderer graphRenderer,
+            IAppAssetRenderer assetRenderer,
+            Action<AppDocumentationContent, ConfigHelper> buildDocumentation)
+        {
             if (context.Apps == null || !context.Config.documentApps) return;
 
             DateTime startDocGeneration = DateTime.Now;
@@ -48,113 +122,24 @@ namespace PowerDocu.AppDocumenter
                 new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
                 app =>
                 {
-                    string folderPath = path + CharsetHelper.GetSafeName(@"\AppDoc " + app.Name + @"\");
+                    string folderPath = AppOutputPath.For(app, path);
                     string appLockKey = Path.GetFullPath(folderPath).ToLowerInvariant();
                     object appOutputLock = _appOutputLocks.GetOrAdd(appLockKey, _ => new object());
 
                     lock (appOutputLock)
                     {
                         Directory.CreateDirectory(folderPath);
-                        BuildScreenNavigationGraph(app, folderPath);
+                        graphRenderer.Render(app, folderPath);
                         if (context.FullDocumentation)
                         {
-                            AppDocumentationContent content = new AppDocumentationContent(app, path, context);
-                            string wordTemplate = (!String.IsNullOrEmpty(context.Config.wordTemplate) && File.Exists(context.Config.wordTemplate))
-                                ? context.Config.wordTemplate : null;
-                            if (context.Config.outputFormat.Equals(OutputFormatHelper.Word) || context.Config.outputFormat.Equals(OutputFormatHelper.All))
-                            {
-                                NotificationHelper.SendNotification("Creating Word documentation");
-                                if (wordTemplate == null)
-                                {
-                                    AppWordDocBuilder wordzip = new AppWordDocBuilder(content, null, context.Config.documentDefaultValuesCanvasApps, context.Config.documentDefaultValuesCanvasApps, context.Config.documentSampleData, context.Config.addTableOfContents);
-                                }
-                                else
-                                {
-                                    AppWordDocBuilder wordzip = new AppWordDocBuilder(content, wordTemplate, context.Config.documentChangesOnlyCanvasApps, context.Config.documentDefaultValuesCanvasApps, context.Config.documentSampleData, context.Config.addTableOfContents);
-                                }
-                            }
-                            if (context.Config.outputFormat.Equals(OutputFormatHelper.Markdown) || context.Config.outputFormat.Equals(OutputFormatHelper.All))
-                            {
-                                NotificationHelper.SendNotification("Creating Markdown documentation");
-                                AppMarkdownBuilder markdownFile = new AppMarkdownBuilder(content);
-                            }
-                            if (context.Config.outputFormat.Equals(OutputFormatHelper.Html) || context.Config.outputFormat.Equals(OutputFormatHelper.All))
-                            {
-                                NotificationHelper.SendNotification("Creating HTML documentation");
-                                AppHtmlBuilder htmlFile = new AppHtmlBuilder(content, context.Config.documentChangesOnlyCanvasApps, context.Config.documentDefaultValuesCanvasApps, context.Config.documentSampleData);
-                            }
+                            AppDocumentationContent content = new AppDocumentationContent(app, path, context, assetRenderer);
+                            buildDocumentation(content, context.Config);
                         }
                         context.Progress?.Increment("Apps");
                     }
                 });
             DateTime endDocGeneration = DateTime.Now;
             NotificationHelper.SendNotification($"AppDocumenter: Generated documentation for {context.Apps.Count} app(s) in {(endDocGeneration - startDocGeneration).TotalSeconds} seconds.");
-        }
-
-        private static void BuildScreenNavigationGraph(AppEntity app, string folderPath)
-        {
-            RootGraph rootGraph = RootGraph.CreateNew(GraphType.Directed, CharsetHelper.GetSafeName(app.Name));
-            Graph.IntroduceAttribute(rootGraph, "compound", "true");
-            Graph.IntroduceAttribute(rootGraph, "fontname", "helvetica");
-            Node.IntroduceAttribute(rootGraph, "shape", "rectangle");
-            Node.IntroduceAttribute(rootGraph, "color", "");
-            Node.IntroduceAttribute(rootGraph, "style", "");
-            Node.IntroduceAttribute(rootGraph, "fillcolor", "");
-            Node.IntroduceAttribute(rootGraph, "label", "");
-            Node.IntroduceAttribute(rootGraph, "fontname", "helvetica");
-            // Pre-compute screens list once — avoids O(n²) re-filtering inside the destination loop
-            List<ControlEntity> screenControls = app.Controls.Where(o => o.Type == "screen").ToList();
-            foreach (ControlEntity ce in app.ScreenNavigations.Keys)
-            {
-                List<string> destinations = app.ScreenNavigations[ce];
-                if (destinations != null)
-                {
-                    foreach (string destination in destinations)
-                    {
-                        if (!destination.Contains("(") && !destination.Contains(","))
-                        {
-                            ControlEntity screen = ce.Screen();
-                            if (screen != null)
-                            {
-                                Node source = rootGraph.GetOrAddNode(CharsetHelper.GetSafeName(screen.Name));
-                                source.SetAttributeHtml("label", "<table border=\"0\"><tr><td>" + CharsetHelper.GetSafeName(ce.Screen().Name) + "</td></tr></table>");
-                                Node dest = rootGraph.GetOrAddNode(CharsetHelper.GetSafeName(destination));
-                                dest.SetAttributeHtml("label", "<table border=\"0\"><tr><td>" + CharsetHelper.GetSafeName(destination) + "</td></tr></table>");
-                                rootGraph.GetOrAddEdge(source, dest, ce.Screen().Name + "-" + destination);
-                            }
-                            else
-                            {
-                                if (ce.Type == "appinfo")
-                                {
-                                    Node source = rootGraph.GetOrAddNode("App");
-                                    source.SetAttributeHtml("label", "<table border=\"0\"><tr><td>App</td></tr></table>");
-                                    source.SetAttribute("shape", "oval");
-                                    Node dest = rootGraph.GetOrAddNode(CharsetHelper.GetSafeName(destination));
-                                    dest.SetAttributeHtml("label", "<table border=\"0\"><tr><td>" + CharsetHelper.GetSafeName(destination) + "</td></tr></table>");
-                                    rootGraph.GetOrAddEdge(source, dest, "App -" + destination);
-                                }
-                            }
-                        }
-                        else
-                        {
-                            foreach (ControlEntity screen in screenControls)
-                            {
-                                if (destination.Contains(screen.Name))
-                                {
-                                    Node source = rootGraph.GetOrAddNode(CharsetHelper.GetSafeName(ce.Screen().Name));
-                                    source.SetAttributeHtml("label", "<table border=\"0\"><tr><td>" + CharsetHelper.GetSafeName(ce.Screen().Name) + "</td></tr></table>");
-                                    Node dest = rootGraph.GetOrAddNode(CharsetHelper.GetSafeName(screen.Name));
-                                    dest.SetAttributeHtml("label", "<table border=\"0\"><tr><td>" + CharsetHelper.GetSafeName(screen.Name) + "</td></tr></table>");
-                                    rootGraph.GetOrAddEdge(source, dest, ce.Screen().Name + "-" + screen.Name);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            rootGraph.CreateLayout();
-            rootGraph.ToPngFile(folderPath + "ScreenNavigation.png");
-            rootGraph.ToSvgFile(folderPath + "ScreenNavigation.svg");
         }
 
         /// <summary>

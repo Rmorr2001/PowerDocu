@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PowerDocu browser adapter — decisions</title><link rel="stylesheet" href="styles.css"></head>
+<body>
+<nav><a href="index.html">Status</a><a href="findings.html">Findings</a><a href="options.html">Options</a><a href="decisions.html">Decisions</a><a href="plan.html">Plan</a></nav>
+<main>
+  <h1>Accepted decisions</h1>
+
+  <h2>D1 — Run retained C# in a replaceable Worker</h2>
+  <pre>Retained: AppParser, entities, Power Fx analysis, AppDocumentationContent, AppHtmlBuilder.
+Changed: A JSExport facade accepts bytes and options and returns ZIP bytes.
+New: PowerDocu.Web.Runtime, worker.js, and PowerDocuWorkerClient.
+Excluded: Main-thread parsing and cooperative cancellation changes to core.
+Parity test: Private Worker acceptance; synthetic cancel/restart E2E.</pre>
+
+  <h2>D2 — Preserve the output tree and use ZIP only as transport</h2>
+  <pre>Retained: AppDoc naming, builder filenames, resources, and relative hierarchy.
+Changed: Generated files are collected from a unique virtual workspace.
+New: BrowserWorkspace ZIP collection and disposal; the UI can also unpack the completed archive into a user-selected folder.
+Excluded: Folder export on browsers without the File System Access API; ZIP remains the portable fallback.
+Parity test: Service and E2E tests inspect safe relative ZIP entries.</pre>
+
+  <h2>D3 — Isolate native Graphviz at one interface</h2>
+  <pre>Retained: Existing screen-navigation data and Graphviz desktop behavior.
+Changed: AppDocumentationGenerator receives IAppGraphRenderer.
+New: BrowserSvgAppGraphRenderer.
+Excluded: Browser PNG and exact Graphviz layout in the first slice.
+Parity test: Graph test asserts screen nodes and navigation edges; private output contains navigation SVG.</pre>
+
+  <h2>D4 — Isolate app assets without removing desktop image behavior</h2>
+  <pre>Retained: AppHtmlBuilder references and desktop System.Drawing/Svg processing.
+Changed: Icon and logo side effects use IAppAssetRenderer.
+New: BrowserAppAssetRenderer writes control SVG and original logo bytes.
+Excluded: Browser rasterization, resize, background composite, and PNG parity.
+Parity test: Asset byte/extension tests and generated resource manifest checks.</pre>
+
+  <h2>D5 — Keep the pinned submodule clean</h2>
+  <pre>Retained: PowerDocu.Common at commit 180780c3b567.
+Changed: No persistent submodule working-tree change.
+New: A reviewed patch for browser base paths, platform-neutral paths, null-safe assembly name, and trim metadata.
+Excluded: Forking or publishing a new Common revision without user approval.
+Parity test: Build applies the patch, runs tests, publishes, reverses it, and the diff guard requires a clean submodule.</pre>
+
+  <h2>D6 — Call the current product a Canvas HTML slice</h2>
+  <pre>Retained: Upstream full HTML output.
+Changed: The browser service rejects unsupported output names explicitly; the UI always requests the full report with fixed retained defaults.
+New: A single upload, logs/uptime, and download workflow lists current capability and gaps.
+Excluded: Word, Markdown, PNG, Solution, Flow, and remaining documenters for now.
+Parity test: Unsupported-format test requires an explicit incomplete error.</pre>
+</main>
+</body>
+</html>

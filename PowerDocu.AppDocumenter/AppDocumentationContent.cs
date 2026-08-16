@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using PowerDocu.Common;
-using Svg;
 
 namespace PowerDocu.AppDocumenter
 {
@@ -19,6 +18,7 @@ namespace PowerDocu.AppDocumenter
         public AppVariablesInfo appVariablesInfo;
         public AppControls appControls;
         public Dictionary<string, MemoryStream> ResourceStreams;
+        public IAppAssetRenderer AssetRenderer;
 
         // App Properties that are colours
         public readonly string[] ColourProperties = new string[]
@@ -42,14 +42,19 @@ namespace PowerDocu.AppDocumenter
             "SelectionFill"
         };
 
-        public AppDocumentationContent(AppEntity app, string path, DocumentationContext context = null)
+        public AppDocumentationContent(
+            AppEntity app,
+            string path,
+            DocumentationContext context = null,
+            IAppAssetRenderer assetRenderer = null)
         {
             NotificationHelper.SendNotification("Preparing documentation content for " + app.Name);
             this.context = context;
-            folderPath = path + CharsetHelper.GetSafeName(@"\AppDoc " + app.Name + @"\");
+            folderPath = AppOutputPath.For(app, path);
             Directory.CreateDirectory(folderPath);
             filename = CharsetHelper.GetSafeName(app.Name);
             ResourceStreams = app.ResourceStreams;
+            AssetRenderer = assetRenderer ?? new SystemDrawingAppAssetRenderer();
             ID = app.ID;
             Name = app.Name;
             appProperties = new AppProperties(app);
@@ -216,12 +221,18 @@ namespace PowerDocu.AppDocumenter
 
     public static class AppDocumentationHelper
     {
-        public static void EnsureControlIconSaved(string controlType, string folderPath, HashSet<string> renderedIcons)
+        public static string EnsureControlIconSaved(
+            string controlType,
+            string folderPath,
+            HashSet<string> renderedIcons,
+            IAppAssetRenderer assetRenderer)
         {
-            if (!renderedIcons.Add(controlType)) return;
-            var svgDocument = SvgDocument.FromSvg<SvgDocument>(AppControlIcons.GetControlIcon(controlType));
-            using var bitmap = svgDocument.Draw(16, 0);
-            bitmap?.Save(folderPath + @"resources\" + controlType + ".png");
+            string resourcesFolder = Path.Combine(folderPath, "resources");
+            if (renderedIcons.Add(controlType))
+            {
+                assetRenderer.SaveControlIcon(controlType, resourcesFolder);
+            }
+            return assetRenderer.GetControlIconFileName(controlType);
         }
 
         public static List<ControlEntity> getAllChildControls(ControlEntity control)
