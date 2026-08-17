@@ -1,21 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { unzipSync } from 'fflate';
 import {
+  BookOpenIcon,
   CheckCircle2Icon,
-  ChevronDownIcon,
-  ChevronRightIcon,
   DownloadIcon,
+  ExternalLinkIcon,
   FileArchiveIcon,
   FileCode2Icon,
   FileTextIcon,
   FolderDownIcon,
+  GitForkIcon,
   Globe2Icon,
   RotateCcwIcon,
+  ShieldCheckIcon,
   SquareIcon,
   UploadCloudIcon,
+  XIcon,
   XCircleIcon,
 } from 'lucide-react';
+import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router-dom';
 
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
@@ -23,7 +28,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { DocumentationPage } from '@/documentation-page';
 import { formatBytes, formatDuration } from '@/format';
+import { SiteHeader } from '@/site-header';
 import {
   PowerDocuWorkerClient,
   type GenerationOptions,
@@ -35,6 +42,8 @@ const MAX_INPUT_BYTES = 100 * 1024 * 1024;
 
 type LogEntry = WorkerEvent & { id: number; time: string };
 type OutputFormat = GenerationOptions['outputFormat'];
+type WorkflowStep = 1 | 2 | 3 | 4;
+type WorkflowProgressState = 'complete' | 'active' | 'pending';
 
 type BrowserDirectoryHandle = {
   getDirectoryHandle(name: string, options: { create: true }): Promise<BrowserDirectoryHandle>;
@@ -55,15 +64,31 @@ type DirectoryPickerWindow = Window & {
 };
 
 export function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<WorkflowPage />} />
+        <Route path="/instructions" element={<DocumentationPage page="instructions" />} />
+        <Route path="/instructions/msapp" element={<DocumentationPage page="msapp" />} />
+        <Route path="/instructions/powerdocu" element={<DocumentationPage page="powerdocu" />} />
+        <Route path="/instructions/webassembly" element={<DocumentationPage page="webassembly" />} />
+        <Route path="*" element={<Navigate replace to="/" />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+function WorkflowPage() {
   const [runtime, setRuntime] = useState<RuntimeState>({ status: 'starting' });
   const [runtimeStartedAt, setRuntimeStartedAt] = useState<number | null>(null);
   const [uptimeSeconds, setUptimeSeconds] = useState(0);
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [outputFormat, setOutputFormat] = useState<OutputFormat>('word');
-  const [instructionsOpen, setInstructionsOpen] = useState(false);
+  const [dataNoticeVisible, setDataNoticeVisible] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [workflowStep, setWorkflowStep] = useState<WorkflowStep>(1);
   const [isSavingFolder, setIsSavingFolder] = useState(false);
   const [phase, setPhase] = useState('Idle');
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -126,22 +151,26 @@ export function App() {
       setFile(null);
       setFileError(null);
       setPhase('Idle');
+      setWorkflowStep(1);
       return;
     }
     if (!candidate.name.toLowerCase().endsWith('.msapp')) {
       setFile(null);
       setFileError('Choose a .msapp file.');
+      setWorkflowStep(1);
       return;
     }
     if (candidate.size === 0 || candidate.size > MAX_INPUT_BYTES) {
       setFile(null);
       setFileError('File must be 1 B–100 MB.');
+      setWorkflowStep(1);
       return;
     }
     setFile(candidate);
     setFileError(null);
     setPhase('Ready');
     setLogs([]);
+    setWorkflowStep(2);
   }, []);
 
   async function generate() {
@@ -152,6 +181,7 @@ export function App() {
     setGenerationError(null);
     setLogs([]);
     setPhase('Reading package');
+    setWorkflowStep(3);
     const startedAt = performance.now();
 
     const options: GenerationOptions = {
@@ -167,6 +197,7 @@ export function App() {
       setArchive(result);
       setElapsed(performance.now() - startedAt);
       setPhase('Archive ready');
+      setWorkflowStep(4);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (message !== 'Generation cancelled.') {
@@ -240,47 +271,85 @@ export function App() {
     setElapsed(null);
     setGenerationError(null);
     setPhase(file ? 'Ready' : 'Idle');
+    setWorkflowStep(file ? 2 : 1);
   }
 
   const outputLabel = outputFormat === 'word' ? 'Word' : 'HTML';
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-5 py-4">
-          <div className="flex items-center gap-3">
-            <div className="grid size-8 place-items-center rounded-md border border-primary/40 bg-primary/10 text-primary">
-              <FileCode2Icon aria-hidden="true" />
-            </div>
-            <h1 className="text-sm font-semibold tracking-tight">PowerDocu</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-expanded={instructionsOpen}
-              aria-controls="instructions"
-              onClick={() => setInstructionsOpen((open) => !open)}
-            >
-              Instructions
-              {instructionsOpen ? (
-                <ChevronDownIcon data-icon="inline-end" />
-              ) : (
-                <ChevronRightIcon data-icon="inline-end" />
-              )}
+      <SiteHeader
+        actions={(
+          <>
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/instructions">
+                <BookOpenIcon data-icon="inline-start" />
+                Instructions
+              </Link>
             </Button>
             <RuntimeBadge runtime={runtime} />
-          </div>
-        </div>
-        {instructionsOpen && (
-          <div id="instructions" className="mx-auto max-w-4xl border-t border-border px-5 py-3 text-xs text-muted-foreground">
-            Upload a .msapp, choose Word or HTML, then download the complete report or save its folder.
-          </div>
+          </>
         )}
-      </header>
+      />
+      <h1 className="sr-only">PowerDocu browser report generator</h1>
 
-      <div className="mx-auto flex max-w-4xl flex-col px-5">
-        <section className="py-9" aria-labelledby="upload-heading">
+      <div className="mx-auto flex max-w-5xl flex-col px-5" data-active-workflow-step={workflowStep}>
+        <section className="flex flex-col gap-3 py-8" aria-labelledby="source-heading">
+          <p id="source-heading" className="text-center font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            Source &amp; credit
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button asChild variant="outline" size="panel" className="min-w-0 justify-start text-left">
+              <a href="https://github.com/modery/PowerDocu" target="_blank" rel="noreferrer">
+                <GitForkIcon data-icon="inline-start" />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium">PowerDocu Repo</span>
+                  <span className="mt-1 block text-xs font-normal leading-relaxed text-muted-foreground">
+                    Original project by Rene Modery.
+                  </span>
+                </span>
+                <ExternalLinkIcon data-icon="inline-end" />
+              </a>
+            </Button>
+            <Button asChild variant="outline" size="panel" className="min-w-0 justify-start text-left">
+              <a href="https://github.com/Rmorr2001/PowerDocu" target="_blank" rel="noreferrer">
+                <FileCode2Icon data-icon="inline-start" />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium">This Repo</span>
+                  <span className="mt-1 block text-xs font-normal leading-relaxed text-muted-foreground">
+                    Browser and WebAssembly adapter source.
+                  </span>
+                </span>
+                <ExternalLinkIcon data-icon="inline-end" />
+              </a>
+            </Button>
+          </div>
+          {dataNoticeVisible && (
+            <Alert>
+              <ShieldCheckIcon aria-hidden="true" />
+              <AlertTitle>Your app file stays local</AlertTitle>
+              <AlertDescription>
+                <p>PowerDocu reads and documents your .msapp entirely inside this browser tab.</p>
+                <p>No Power Platform sign-in, cloud connection, upload, or server-side file storage is used. Your generated report leaves the page only when you download it.</p>
+              </AlertDescription>
+              <AlertAction>
+                <Button variant="ghost" size="icon-sm" aria-label="Dismiss data rules" onClick={() => setDataNoticeVisible(false)}>
+                  <XIcon />
+                </Button>
+              </AlertAction>
+            </Alert>
+          )}
+        </section>
+
+        <Separator />
+
+        <section
+          className="workflow-section py-9"
+          data-workflow="upload"
+          data-progress-state={getWorkflowProgressState(1, workflowStep)}
+          aria-current={workflowStep === 1 ? 'step' : undefined}
+          aria-labelledby="upload-heading"
+        >
           <SectionHeading id="upload-heading" index="01" title="Upload & preview" />
           <input
             ref={inputRef}
@@ -335,7 +404,13 @@ export function App() {
 
         <Separator />
 
-        <section className="py-9" aria-labelledby="output-heading">
+        <section
+          className="workflow-section py-9"
+          data-workflow="output"
+          data-progress-state={getWorkflowProgressState(2, workflowStep)}
+          aria-current={workflowStep === 2 ? 'step' : undefined}
+          aria-labelledby="output-heading"
+        >
           <SectionHeading id="output-heading" index="02" title="Output" />
           <Field className="mt-5">
             <ToggleGroup
@@ -378,7 +453,13 @@ export function App() {
 
         <Separator />
 
-        <section className="py-9" aria-labelledby="logs-heading">
+        <section
+          className="workflow-section py-9"
+          data-workflow="logs"
+          data-progress-state={getWorkflowProgressState(3, workflowStep)}
+          aria-current={workflowStep === 3 ? 'step' : undefined}
+          aria-labelledby="logs-heading"
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <SectionHeading id="logs-heading" index="03" title="Logs & uptime" />
             <Badge variant="outline" className="font-mono">
@@ -418,7 +499,13 @@ export function App() {
 
         <Separator />
 
-        <section className="py-9" aria-labelledby="download-heading">
+        <section
+          className="workflow-section py-9"
+          data-workflow="download"
+          data-progress-state={getWorkflowProgressState(4, workflowStep)}
+          aria-current={workflowStep === 4 ? 'step' : undefined}
+          aria-labelledby="download-heading"
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <SectionHeading id="download-heading" index="04" title="Download" />
             {archive && <Badge variant="outline">{formatBytes(archive.byteLength)} · {elapsed === null ? 'Ready' : `${(elapsed / 1000).toFixed(2)} s`}</Badge>}
@@ -472,6 +559,12 @@ function SectionHeading({ id, index, title }: { id: string; index: string; title
       <h2 id={id} className="text-xl font-medium tracking-tight">{title}</h2>
     </div>
   );
+}
+
+function getWorkflowProgressState(step: WorkflowStep, activeStep: WorkflowStep): WorkflowProgressState {
+  if (step < activeStep) return 'complete';
+  if (step === activeStep) return 'active';
+  return 'pending';
 }
 
 async function writeFolderEntry(root: BrowserDirectoryHandle, path: string, contents: Uint8Array) {

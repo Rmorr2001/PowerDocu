@@ -4,6 +4,9 @@
   "buildCommand": "npm --prefix web run build:static",
   "outputDirectory": "web/dist",
   "framework": "vite",
+  "rewrites": [
+    { "source": "/instructions/:path*", "destination": "/index.html" }
+  ],
   "headers": [
     {
       "source": "/(.*)",

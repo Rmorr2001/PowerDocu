@@ -4,6 +4,35 @@ import { unzipSync } from 'fflate';
 
 import { writeSyntheticMsapp } from './synthetic-msapp';
 
+test('uses real documentation routes and exposes the local-data rules', async ({ page }) => {
+  await page.goto('/');
+
+  await expect(page.getByRole('link', { name: 'PowerDocu Repo' })).toHaveAttribute(
+    'href',
+    'https://github.com/modery/PowerDocu',
+  );
+  await expect(page.getByRole('link', { name: 'This Repo' })).toHaveAttribute(
+    'href',
+    'https://github.com/Rmorr2001/PowerDocu',
+  );
+
+  const dataRules = page.getByRole('alert');
+  await expect(dataRules).toContainText('PowerDocu reads and documents your .msapp entirely inside this browser tab.');
+  await page.getByRole('button', { name: 'Dismiss data rules' }).click();
+  await expect(dataRules).toBeHidden();
+
+  await page.getByRole('link', { name: 'Instructions' }).click();
+  await expect(page).toHaveURL('/instructions');
+  await expect(page.getByRole('heading', { level: 1, name: 'Instructions' })).toBeVisible();
+
+  await page.getByRole('link', { name: '.msapp files' }).click();
+  await expect(page).toHaveURL('/instructions/msapp');
+  await expect(page.getByRole('heading', { level: 1, name: 'How .msapp files work' })).toBeVisible();
+
+  await page.goto('/instructions/webassembly');
+  await expect(page.getByRole('heading', { level: 1, name: 'How this WebAssembly app works' })).toBeVisible();
+});
+
 test('generates a safe HTML archive entirely on the page origin', async ({ page }, testInfo) => {
   const requestOrigins = new Set<string>();
   page.on('request', (request) => requestOrigins.add(new URL(request.url()).origin));
@@ -12,14 +41,22 @@ test('generates a safe HTML archive entirely on the page origin', async ({ page 
   await writeSyntheticMsapp(fixturePath);
   await page.goto('/');
   await expect(page.getByText('Runtime ready', { exact: true })).toBeVisible({ timeout: 120_000 });
+  await expect(page.locator('[data-active-workflow-step]')).toHaveAttribute('data-active-workflow-step', '1');
+  await expect(page.locator('[data-workflow="upload"]')).toHaveAttribute('data-progress-state', 'active');
 
   await page.locator('input[type="file"]').setInputFiles(fixturePath);
   await expect(page.getByText('synthetic.msapp', { exact: true })).toBeVisible();
+  await expect(page.locator('[data-active-workflow-step]')).toHaveAttribute('data-active-workflow-step', '2');
+  await expect(page.locator('[data-workflow="output"]')).toHaveAttribute('data-progress-state', 'active');
   await page.getByRole('radio', { name: 'HTML report' }).click();
   await page.getByRole('button', { name: 'Generate full report' }).click();
+  await expect(page.locator('[data-active-workflow-step]')).toHaveAttribute('data-active-workflow-step', '3');
+  await expect(page.locator('[data-workflow="logs"]')).toHaveAttribute('data-progress-state', 'active');
   const outcome = page.getByRole('heading', { name: /Archive ready|Generation failed/ });
   await expect(outcome).toBeVisible({ timeout: 120_000 });
   expect(await outcome.innerText()).toBe('Archive ready');
+  await expect(page.locator('[data-active-workflow-step]')).toHaveAttribute('data-active-workflow-step', '4');
+  await expect(page.locator('[data-workflow="download"]')).toHaveAttribute('data-progress-state', 'active');
 
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download complete HTML ZIP' }).click();
