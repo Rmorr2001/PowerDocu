@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PowerDocu browser adapter — options</title><link rel="stylesheet" href="styles.css"></head>
+<body>
+<nav><a href="index.html">Status</a><a href="findings.html">Findings</a><a href="options.html">Options</a><a href="decisions.html">Decisions</a><a href="plan.html">Plan</a></nav>
+<main>
+  <h1>Architecture options</h1>
+  <h2>Runtime placement</h2>
+  <table>
+    <thead><tr><th>Option</th><th>Concrete effect</th><th>Assessment</th></tr></thead>
+    <tbody>
+      <tr><td>.NET WebAssembly in a Web Worker</td><td>Retains C# assemblies and virtual <code>System.IO</code>; parsing cannot block React; termination supplies cancellation and fault recovery.</td><td>Selected. Private fixture completes. Cost is a 16 MB static engine tree and a Worker protocol.</td></tr>
+      <tr><td>.NET WebAssembly on the main thread</td><td>Simpler interop but the retained synchronous parser and builders block rendering and input.</td><td>Rejected. There is no cooperative yield boundary in <code>AppParser</code> or <code>AppDocumentationGenerator</code>.</td></tr>
+      <tr><td>TypeScript rewrite</td><td>Native browser APIs but duplicates parsers, models, Power Fx analysis, naming, and builders.</td><td>Rejected by preservation constraint; no evidence that retaining C# is infeasible.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Graph output</h2>
+  <table>
+    <tbody>
+      <tr><th>Native Graphviz</th><td>Preserves desktop rendering but <code>Rubjerg.Graphviz</code> depends on native binaries unavailable to browser WebAssembly.</td></tr>
+      <tr><th>Remote graph service</th><td>Would violate offline and no-backend requirements and transmit package-derived labels.</td></tr>
+      <tr><th>Managed semantic SVG</th><td>Selected for the first slice. Preserves nodes, labels, and navigation edges with no native or remote dependency. Layout and PNG equivalence remain parity work.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Output transport</h2>
+  <p>ZIP is the portable download because the retained builders create multiple files and directories. The archive contains the original relative tree and is not presented as a new document format. The same completed tree can also be written to a selected folder when the browser exposes the File System Access API.</p>
+
+  <h2>Static artifact strategy</h2>
+  <p>The reproducible Docker build uses the pinned .NET 10.0.400 SDK and WebAssembly workload, tests and publishes the runtime, removes redundant precompressed copies, and builds Vite. Generated runtime files are staged under ignored <code>web/public/engine</code> and copied into the static <code>web/dist</code> artifact. Build output is not source-controlled. A prebuilt Vercel workflow still requires Stage 6 validation; no function or runtime secret is configured.</p>
+</main>
+</body>
+</html>

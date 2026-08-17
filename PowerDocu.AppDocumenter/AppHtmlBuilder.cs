@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
 using PowerDocu.Common;
-using Svg;
 
 namespace PowerDocu.AppDocumenter
 {
@@ -95,38 +93,13 @@ namespace PowerDocu.AppDocumenter
             {
                 if (content.ResourceStreams.TryGetValue(content.appProperties.appLogo, out MemoryStream resourceStream))
                 {
-                    Bitmap appLogo;
-                    if (!String.IsNullOrEmpty(content.appProperties.appBackgroundColour))
-                    {
-                        Color c = ColorTranslator.FromHtml(ColourHelper.ParseColor(content.appProperties.appBackgroundColour));
-                        Bitmap bmp = new Bitmap(resourceStream);
-                        appLogo = new Bitmap(bmp.Width, bmp.Height);
-                        Rectangle rect = new Rectangle(Point.Empty, bmp.Size);
-                        using (Graphics G = Graphics.FromImage(appLogo))
-                        {
-                            G.Clear(c);
-                            G.DrawImageUnscaledAndClipped(bmp, rect);
-                        }
-                        appLogo.Save(content.folderPath + @"resources\applogo.png");
-                    }
-                    else
-                    {
-                        using Stream streamToWriteTo = File.Open(content.folderPath + @"resources\applogo.png", FileMode.Create);
-                        resourceStream.CopyTo(streamToWriteTo);
-                        resourceStream.Position = 0;
-                        appLogo = new Bitmap(resourceStream);
-                    }
-                    resourceStream.Position = 0;
-                    if (appLogo.Width > appLogoWidth)
-                    {
-                        Bitmap resized = new Bitmap(appLogo, new Size(appLogoWidth, appLogoWidth * appLogo.Height / appLogo.Width));
-                        resized.Save(content.folderPath + @"resources\applogoSmall.png");
-                        sb.Append(TableRowRaw("App Logo", Image("App Logo", "resources/applogoSmall.png")));
-                    }
-                    else
-                    {
-                        sb.Append(TableRowRaw("App Logo", Image("App Logo", "resources/applogo.png")));
-                    }
+                    string logoFileName = content.AssetRenderer.SaveAppLogo(
+                        content.appProperties.appLogo,
+                        resourceStream,
+                        Path.Combine(content.folderPath, "resources"),
+                        content.appProperties.appBackgroundColour,
+                        appLogoWidth);
+                    sb.Append(TableRowRaw("App Logo", Image("App Logo", "resources/" + logoFileName)));
                 }
             }
             sb.Append(TableRow(content.appProperties.headerDocumentationGenerated, PowerDocuReleaseHelper.GetTimestampWithVersion()));
@@ -393,7 +366,9 @@ namespace PowerDocu.AppDocumenter
                         if (content.ResourceStreams.TryGetValue(resource.Name, out MemoryStream resourceStream))
                         {
                             Expression fileName = resource.Properties.First(o => o.expressionOperator == "FileName");
-                            using Stream streamToWriteTo = File.Open(content.folderPath + @"resources\" + fileName.expressionOperands[0].ToString(), FileMode.Create);
+                            using Stream streamToWriteTo = File.Open(
+                                Path.Combine(content.folderPath, "resources", fileName.expressionOperands[0].ToString()),
+                                FileMode.Create);
                             resourceStream.Position = 0;
                             resourceStream.CopyTo(streamToWriteTo);
                             body.Append(TableRowRaw("Resource Preview", Image(resource.Name, "resources/" + fileName.expressionOperands[0].ToString())));
@@ -437,13 +412,14 @@ namespace PowerDocu.AppDocumenter
 
         private string CreateControlListHtml(ControlEntity control)
         {
-            AppDocumentationHelper.EnsureControlIconSaved(control.Type, content.folderPath, _renderedIcons);
+            string iconFileName = AppDocumentationHelper.EnsureControlIconSaved(
+                control.Type, content.folderPath, _renderedIcons, content.AssetRenderer);
             string screenFile = screenFileNames.GetValueOrDefault(control.Screen()?.Name, "#");
             string controlAnchor = SanitizeAnchorId(control.Name);
             StringBuilder sb = new StringBuilder("<ul>");
             sb.Append("<li>");
             sb.Append($"<a href=\"{Encode(screenFile)}#{controlAnchor}\">");
-            sb.Append(ImageWithClass(control.Type, "resources/" + control.Type + ".png", "icon-inline"));
+            sb.Append(ImageWithClass(control.Type, "resources/" + iconFileName, "icon-inline"));
             sb.Append($" {Encode(control.Name)}</a>");
             foreach (ControlEntity child in control.Children.OrderBy(o => o.Name).ToList())
             {
@@ -479,9 +455,10 @@ namespace PowerDocu.AppDocumenter
         {
             Entity defaultEntity = DefaultChangeHelper.GetEntityDefaults(control.Type);
             StringBuilder sb = new StringBuilder();
-            AppDocumentationHelper.EnsureControlIconSaved(control.Type, content.folderPath, _renderedIcons);
+            string iconFileName = AppDocumentationHelper.EnsureControlIconSaved(
+                control.Type, content.folderPath, _renderedIcons, content.AssetRenderer);
             sb.Append(TableStart("Property", "Value"));
-            sb.Append(TableRowRaw(Image(control.Type, "resources/" + control.Type + ".png"), "Type: " + Encode(control.Type)));
+            sb.Append(TableRowRaw(Image(control.Type, "resources/" + iconFileName), "Type: " + Encode(control.Type)));
             string category = "";
 
             foreach (Rule rule in control.Rules.OrderBy(o => o.Category).ThenBy(o => o.Property).ToList())

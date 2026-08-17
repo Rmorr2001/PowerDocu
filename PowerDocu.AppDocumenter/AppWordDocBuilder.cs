@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -28,7 +27,7 @@ namespace PowerDocu.AppDocumenter
             this.template = template;
             Directory.CreateDirectory(content.folderPath);
             // Main document: everything except detailed controls
-            string filename = InitializeWordDocument(content.folderPath + content.filename, template);
+            string filename = InitializeWordDocument(Path.Combine(content.folderPath, content.filename), template);
             using (WordprocessingDocument wordDocument = WordprocessingDocument.Open(filename, true))
             {
                 mainPart = wordDocument.MainDocumentPart;
@@ -66,12 +65,7 @@ namespace PowerDocu.AppDocumenter
                 {
                     Drawing icon;
                     ImagePart imagePart = mainPart.AddImagePart(ImagePartType.Jpeg);
-                    int imageWidth, imageHeight;
-                    using (var image = Image.FromStream(resourceStream, false, false))
-                    {
-                        imageWidth = image.Width;
-                        imageHeight = image.Height;
-                    }
+                    (int imageWidth, int imageHeight) = ImageDimensionReader.Read(resourceStream);
                     resourceStream.Position = 0;
                     imagePart.FeedData(resourceStream);
                     int usedWidth = (imageWidth > 400) ? 400 : imageWidth;
@@ -210,18 +204,14 @@ namespace PowerDocu.AppDocumenter
             body.AppendChild(new Paragraph(new Run(new Text(content.appControls.infoTextScreenNavigation))));
             ImagePart imagePart = wordDoc.MainDocumentPart.AddImagePart(ImagePartType.Png);
             int imageWidth, imageHeight;
-            using (FileStream stream = new FileStream(content.folderPath + content.appControls.imageScreenNavigation + ".png", FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (FileStream stream = new FileStream(Path.Combine(content.folderPath, content.appControls.imageScreenNavigation + ".png"), FileMode.Open, FileAccess.Read, FileShare.Read))
             {
-                using (var image = Image.FromStream(stream, false, false))
-                {
-                    imageWidth = image.Width;
-                    imageHeight = image.Height;
-                }
+                (imageWidth, imageHeight) = ImageDimensionReader.Read(stream);
                 stream.Position = 0;
                 imagePart.FeedData(stream);
             }
             ImagePart svgPart = wordDoc.MainDocumentPart.AddNewPart<ImagePart>("image/svg+xml", "rId" + (new Random()).Next(100000, 999999));
-            using (FileStream stream = new FileStream(content.folderPath + content.appControls.imageScreenNavigation + ".svg", FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (FileStream stream = new FileStream(Path.Combine(content.folderPath, content.appControls.imageScreenNavigation + ".svg"), FileMode.Open, FileAccess.Read, FileShare.Read))
             {
                 svgPart.FeedData(stream);
             }
@@ -271,7 +261,7 @@ namespace PowerDocu.AppDocumenter
 
         private void addScreenDocument(ControlEntity screen)
         {
-            string screenFileName = content.folderPath + content.filename + " - " + CharsetHelper.GetSafeName(screen.Name) + " Screen";
+            string screenFileName = Path.Combine(content.folderPath, content.filename + " - " + CharsetHelper.GetSafeName(screen.Name) + " Screen");
             string filename = InitializeWordDocument(screenFileName, template);
             using WordprocessingDocument wordDocument = WordprocessingDocument.Open(filename, true);
             mainPart = wordDocument.MainDocumentPart;
@@ -532,12 +522,7 @@ namespace PowerDocu.AppDocumenter
                             else
                             {
                                 ImagePart imagePart = mainPart.AddImagePart(ImagePartType.Jpeg);
-                                int imageWidth, imageHeight;
-                                using (var image = Image.FromStream(resourceStream, false, false))
-                                {
-                                    imageWidth = image.Width;
-                                    imageHeight = image.Height;
-                                }
+                                (int imageWidth, int imageHeight) = ImageDimensionReader.Read(resourceStream);
                                 resourceStream.Position = 0;
                                 imagePart.FeedData(resourceStream);
                                 int usedWidth = (imageWidth > 400) ? 400 : imageWidth;

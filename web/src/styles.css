@@ -1,0 +1,234 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/geist";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: oklch(0.105 0 0);
+  --foreground: oklch(0.96 0 0);
+  --card: oklch(0.14 0 0);
+  --card-foreground: oklch(0.96 0 0);
+  --popover: oklch(0.14 0 0);
+  --popover-foreground: oklch(0.96 0 0);
+  --primary: oklch(0.89 0.24 128);
+  --primary-foreground: oklch(0.13 0.02 128);
+  --secondary: oklch(0.19 0 0);
+  --secondary-foreground: oklch(0.91 0 0);
+  --muted: oklch(0.18 0 0);
+  --muted-foreground: oklch(0.65 0 0);
+  --accent: oklch(0.22 0 0);
+  --accent-foreground: oklch(0.96 0 0);
+  --destructive: oklch(0.7 0.2 25);
+  --border: oklch(0.27 0 0);
+  --input: oklch(0.32 0 0);
+  --ring: oklch(0.89 0.24 128);
+  --workflow-upload: oklch(0.89 0.24 128);
+  --workflow-output: oklch(0.78 0.16 235);
+  --workflow-logs: oklch(0.84 0.17 78);
+  --workflow-download: oklch(0.78 0.18 310);
+  --radius: 0.5rem;
+}
+
+@theme inline {
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-workflow-upload: var(--workflow-upload);
+  --color-workflow-output: var(--workflow-output);
+  --color-workflow-logs: var(--workflow-logs);
+  --color-workflow-download: var(--workflow-download);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    color-scheme: dark;
+    background: var(--background);
+  }
+
+  body {
+    @apply m-0 min-w-80 bg-background font-sans text-foreground antialiased;
+  }
+
+  button,
+  label {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  ::selection {
+    background: color-mix(in oklch, var(--primary) 35%, transparent);
+    color: var(--foreground);
+  }
+}
+
+@layer components {
+  .workflow-section {
+    position: relative;
+    margin-left: -1.25rem;
+    border-left: 1px solid color-mix(in oklch, var(--primary) 20%, transparent);
+    padding-left: calc(1.25rem - 1px);
+    transition: border-color 280ms ease;
+  }
+
+  .workflow-section::before {
+    position: absolute;
+    top: 2.55rem;
+    left: -0.1875rem;
+    width: 0.3125rem;
+    height: 0.3125rem;
+    border-radius: 9999px;
+    background: color-mix(in oklch, var(--primary) 22%, var(--background));
+    box-shadow: 0 0 0 4px color-mix(in oklch, var(--primary) 5%, var(--background));
+    content: "";
+    transition: background-color 280ms ease, box-shadow 280ms ease, transform 280ms ease;
+  }
+
+  .workflow-section::after {
+    position: absolute;
+    top: 0;
+    left: -1px;
+    width: 1px;
+    height: 20%;
+    background: var(--primary);
+    content: "";
+    opacity: 0;
+  }
+
+  .workflow-section[data-progress-state="complete"] {
+    border-left-color: color-mix(in oklch, var(--primary) 58%, transparent);
+  }
+
+  .workflow-section[data-progress-state="complete"]::before {
+    background: color-mix(in oklch, var(--primary) 70%, var(--background));
+    box-shadow: 0 0 0 4px color-mix(in oklch, var(--primary) 9%, var(--background));
+  }
+
+  .workflow-section[data-progress-state="active"] {
+    border-left-color: color-mix(in oklch, var(--primary) 38%, transparent);
+  }
+
+  .workflow-section[data-progress-state="active"]::before {
+    background: var(--primary);
+    box-shadow:
+      0 0 0 4px color-mix(in oklch, var(--primary) 14%, var(--background)),
+      0 0 18px color-mix(in oklch, var(--primary) 65%, transparent);
+    transform: scale(1.35);
+    animation: active-step-pulse 1.8s ease-in-out infinite;
+  }
+
+  .workflow-section[data-progress-state="active"]::after {
+    opacity: 1;
+    animation: section-surge 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+
+  .workflow-section[data-workflow="upload"] {
+    --primary: var(--workflow-upload);
+    --ring: var(--workflow-upload);
+    --muted: color-mix(in oklch, var(--workflow-upload) 10%, var(--background));
+    --input: color-mix(in oklch, var(--workflow-upload) 24%, var(--border));
+  }
+
+  .workflow-section[data-workflow="output"] {
+    --primary: var(--workflow-output);
+    --ring: var(--workflow-output);
+    --muted: color-mix(in oklch, var(--workflow-output) 10%, var(--background));
+    --input: color-mix(in oklch, var(--workflow-output) 24%, var(--border));
+  }
+
+  .workflow-section[data-workflow="logs"] {
+    --primary: var(--workflow-logs);
+    --ring: var(--workflow-logs);
+    --muted: color-mix(in oklch, var(--workflow-logs) 10%, var(--background));
+    --input: color-mix(in oklch, var(--workflow-logs) 24%, var(--border));
+  }
+
+  .workflow-section[data-workflow="download"] {
+    --primary: var(--workflow-download);
+    --ring: var(--workflow-download);
+    --muted: color-mix(in oklch, var(--workflow-download) 10%, var(--background));
+    --input: color-mix(in oklch, var(--workflow-download) 24%, var(--border));
+  }
+
+  .route-enter {
+    animation: route-enter 240ms ease-out both;
+  }
+}
+
+@keyframes route-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.35rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes section-surge {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+
+  18% {
+    opacity: 0.8;
+  }
+
+  72% {
+    opacity: 0.5;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(400%);
+  }
+}
+
+@keyframes active-step-pulse {
+  0%,
+  100% {
+    filter: brightness(0.9);
+  }
+
+  50% {
+    filter: brightness(1.3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-enter {
+    animation: none;
+  }
+
+  .workflow-section[data-progress-state="active"]::after,
+  .workflow-section[data-progress-state="active"]::before {
+    animation: none;
+  }
+}

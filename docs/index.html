@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PowerDocu browser adapter — status</title><link rel="stylesheet" href="styles.css"></head>
+<body>
+<nav><a href="index.html">Status</a><a href="findings.html">Findings</a><a href="options.html">Options</a><a href="decisions.html">Decisions</a><a href="plan.html">Plan</a></nav>
+<main>
+  <h1>PowerDocu browser adapter status</h1>
+  <p><span class="status">Canvas HTML slice demonstrated</span></p>
+  <p>The browser UI accepts a standalone <code>.msapp</code>, transfers its bytes to a dedicated Web Worker, runs the retained C# <code>AppParser</code> and Canvas HTML workflow in .NET WebAssembly, and downloads the generated directory tree as a ZIP. There is no application backend or serverless function.</p>
+
+  <div class="facts">
+    <div class="fact"><span>Upstream</span><strong>modery/PowerDocu</strong></div>
+    <div class="fact"><span>PowerDocu commit</span><strong>e33fe72f4498</strong></div>
+    <div class="fact"><span>Common commit</span><strong>180780c3b567</strong></div>
+    <div class="fact"><span>SDK</span><strong>.NET 10.0.400</strong></div>
+    <div class="fact"><span>Browser runtime</span><strong>.NET 10 WebAssembly</strong></div>
+    <div class="fact"><span>Generated engine</span><strong>16 MB static tree</strong></div>
+  </div>
+
+  <h2>Demonstrated acceptance</h2>
+  <table>
+    <thead><tr><th>Check</th><th>Evidence</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>Private Canvas parser baseline</td><td>Retained parser: 6 screens, 824 controls, 37 global variables, 12 data sources, 2 resources, and 10 navigation edges.</td><td>Pass</td></tr>
+      <tr><td>Native browser-adapter smoke</td><td>Retained HTML builder produced 37 ZIP entries: 22 HTML, 14 SVG, and 1 CSS file.</td><td>Pass</td></tr>
+      <tr><td>Browser Worker acceptance</td><td>The private fixture completed locally and enabled a 248.1 KB ZIP download. No fixture content or output is stored in this repository.</td><td>Pass</td></tr>
+      <tr><td>Synthetic end to end</td><td>Browser upload, Worker generation, download, ZIP inspection, safe relative paths, and same-origin-only requests.</td><td>Pass</td></tr>
+      <tr><td>Cancellation recovery</td><td>Termination recreates the Worker and a subsequent synthetic generation completes.</td><td>Pass</td></tr>
+      <tr><td>Desktop output parity</td><td>The original Linux container path reaches native Graphviz, then fails on Windows-specific resource/process assumptions. A complete desktop file manifest is not available on this host.</td><td class="gap">Incomplete</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Current boundary</h2>
+  <p>Supported now: standalone Canvas <code>.msapp</code>, one fixed full HTML report, retained changed/default property behavior, managed SVG navigation, control SVGs, preserved app-logo bytes, ZIP download, and direct folder export where the browser supports it.</p>
+  <p class="gap">Not complete: Canvas Word and Markdown, native PNG parity, desktop-equivalent logo compositing/resizing, solution orchestration, Flow and remaining component documenters, complete desktop/browser normalized parity, and deployment validation.</p>
+
+  <h2>Read-only ownership inventory</h2>
+  <table>
+    <tbody>
+      <tr><th>Git remote</th><td><code>upstream</code> → <code>https://github.com/modery/PowerDocu.git</code></td></tr>
+      <tr><th>Git author</th><td><code>rmorr2001</code>; an email is configured locally but intentionally not copied into repository documentation.</td></tr>
+      <tr><th>GitHub CLI</th><td>Active: <code>Richard-at-Bell</code>. Secondary inactive login: <code>Rmorr2001</code>. No fork, push, or PR was created.</td></tr>
+      <tr><th>Vercel CLI</th><td>User <code>richard-at-bell</code>; available scope <code>richards-projects-e841172a</code> / “Bell Construction Advanced”. Four unrelated existing projects were observed; no PowerDocu project exists.</td></tr>
+      <tr><th>External state</th><td>No repository, project, link, deployment, or external data transfer was created.</td></tr>
+    </tbody>
+  </table>
+</main>
+</body>
+</html>

@@ -1,0 +1,107 @@
+diff --git a/PowerDocu.Common/AppParser.cs b/PowerDocu.Common/AppParser.cs
+index dfffc40..c815acb 100644
+--- a/PowerDocu.Common/AppParser.cs
++++ b/PowerDocu.Common/AppParser.cs
+@@ -34,3 +34,3 @@ namespace PowerDocu.Common
+                 {
+-                    string tempFile = Path.GetDirectoryName(filename) + @"\" + definition.Name;
++                    string tempFile = Path.Combine(Path.GetDirectoryName(filename), definition.Name);
+                     definition.ExtractToFile(tempFile, true);
+diff --git a/PowerDocu.Common/AssemblyHelper.cs b/PowerDocu.Common/AssemblyHelper.cs
+index bfaf72f..e8a7869 100644
+--- a/PowerDocu.Common/AssemblyHelper.cs
++++ b/PowerDocu.Common/AssemblyHelper.cs
+@@ -22,5 +22,10 @@ namespace PowerDocu.Common
+         public static string GetExecutablePath()
+         {
++            if (OperatingSystem.IsBrowser())
++            {
++                return AppContext.BaseDirectory;
++            }
++
+             var mainModule = System.Diagnostics.Process.GetCurrentProcess().MainModule;
+             return mainModule.FileName.Replace(mainModule.ModuleName, "");
+         }
+@@ -28,4 +33,4 @@ namespace PowerDocu.Common
+         public static string GetApplicationName()
+         {
+-            return Assembly.GetEntryAssembly().GetName().Name;
++            return (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly()).GetName().Name;
+         }
+diff --git a/PowerDocu.Common/DefaultChangeHelper.cs b/PowerDocu.Common/DefaultChangeHelper.cs
+index 14173e2..aa7e331 100644
+--- a/PowerDocu.Common/DefaultChangeHelper.cs
++++ b/PowerDocu.Common/DefaultChangeHelper.cs
+@@ -9,6 +9,6 @@ namespace PowerDocu.Common
+     public static class DefaultChangeHelper
+     {
+-        private static readonly string ControlDefaultsFile = AssemblyHelper.GetExecutablePath() + @"Resources\DefaultSettings\ControlDefaultSetting.json";
+-        private static readonly string AppDefaultsFile = AssemblyHelper.GetExecutablePath() + @"Resources\DefaultSettings\AppDefaultSetting.json";
+-        private static readonly string ScreenDefaultsFile = AssemblyHelper.GetExecutablePath() + @"Resources\DefaultSettings\ScreenDefaultSetting.json";
++        private static readonly string ControlDefaultsFile = ResolveDefaultsFile("ControlDefaultSetting.json");
++        private static readonly string AppDefaultsFile = ResolveDefaultsFile("AppDefaultSetting.json");
++        private static readonly string ScreenDefaultsFile = ResolveDefaultsFile("ScreenDefaultSetting.json");
+         private static List<Entity> entityDefaults;
+@@ -17,2 +17,11 @@ namespace PowerDocu.Common
++        private static string ResolveDefaultsFile(string fileName)
++        {
++            string executableFile = Path.Combine(
++                AssemblyHelper.GetExecutablePath(), "Resources", "DefaultSettings", fileName);
++            if (File.Exists(executableFile)) return executableFile;
++
++            return Path.Combine(AppContext.BaseDirectory, "Resources", "DefaultSettings", fileName);
++        }
++
+         private static void InitializeEntityDefaults()
+         {
+diff --git a/PowerDocu.Common/PowerDocu.Common.csproj b/PowerDocu.Common/PowerDocu.Common/PowerDocu.Common.csproj
+index d60f3cc..315dadf 100644
+--- a/PowerDocu.Common/PowerDocu.Common.csproj
++++ b/PowerDocu.Common/PowerDocu.Common.csproj
+@@ -4,4 +4,5 @@
+     <TargetFramework>net10.0</TargetFramework>
+     <LangVersion>latest</LangVersion>
+     <DebugType>embedded</DebugType>
++    <IsTrimmable>true</IsTrimmable>
+   </PropertyGroup>
+diff --git a/PowerDocu.Common/WordDocBuilder.cs b/PowerDocu.Common/WordDocBuilder.cs
+index 305664a..f91e92b 100644
+--- a/PowerDocu.Common/WordDocBuilder.cs
++++ b/PowerDocu.Common/WordDocBuilder.cs
+@@ -448,5 +448,6 @@ namespace PowerDocu.Common
+             var root = new Styles();
+             root.Save(part);
+-            FileStream stylesTemplate = new FileStream(AssemblyHelper.GetExecutablePath() + @"\Resources\styles.xml", FileMode.Open, FileAccess.Read, FileShare.Read);
++            string stylesPath = Path.Combine(AssemblyHelper.GetExecutablePath(), "Resources", "styles.xml");
++            FileStream stylesTemplate = new FileStream(stylesPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+             part.FeedData(stylesTemplate);
+             return part;
+@@ -465,3 +466,3 @@ namespace PowerDocu.Common
+             // Load the required styles from the bundled resource
+-            string stylesPath = AssemblyHelper.GetExecutablePath() + @"\Resources\styles.xml";
++            string stylesPath = Path.Combine(AssemblyHelper.GetExecutablePath(), "Resources", "styles.xml");
+             XDocument requiredStylesDoc = XDocument.Load(stylesPath);
+@@ -916,15 +917,13 @@ namespace PowerDocu.Common
+         protected string CreateMD5Hash(string input)
+         {
+-            // Step 1, calculate MD5 hash from input
+-            MD5 md5 = MD5.Create();
+-            byte[] inputBytes = Encoding.ASCII.GetBytes(input);
+-            byte[] hashBytes = md5.ComputeHash(inputBytes);
+-
+-            // Step 2, convert byte array to hex string
+-            StringBuilder sb = new StringBuilder();
+-            for (int i = 0; i < hashBytes.Length; i++)
++            // Browser WebAssembly does not expose MD5. These independent FNV-1a
++            // values retain a compact, deterministic key for SVG de-duplication.
++            ulong first = 14695981039346656037UL;
++            ulong second = 1099511628211UL;
++            foreach (byte value in Encoding.UTF8.GetBytes(input))
+             {
+-                sb.Append(hashBytes[i].ToString("X2"));
++                first = (first ^ value) * 1099511628211UL;
++                second = (second ^ (byte)(value + 0x9D)) * 14695981039346656037UL;
+             }
+-            return sb.ToString();
++            return first.ToString("X16") + second.ToString("X16");
+         }

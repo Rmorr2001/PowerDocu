@@ -1,0 +1,16 @@
+.git
+.vercel
+**/bin
+**/obj
+**/Debug
+**/Release
+**/artifacts
+**/.artifacts
+**/TestResults
+**/test-results
+**/playwright-report
+**/node_modules
+web/dist
+*.user
+*.suo
+*.log
