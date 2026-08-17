@@ -4,8 +4,9 @@ import { unzipSync } from 'fflate';
 
 import { writeSyntheticMsapp } from './synthetic-msapp';
 
-test('uses real documentation routes and exposes the local-data rules', async ({ page }) => {
+test('uses real documentation routes from the streamlined workflow', async ({ page }) => {
   await page.goto('/');
+  await expect(page.getByText('Runtime ready', { exact: true })).toHaveCount(0);
 
   await expect(page.getByRole('link', { name: 'PowerDocu Repo' })).toHaveAttribute(
     'href',
@@ -16,27 +17,29 @@ test('uses real documentation routes and exposes the local-data rules', async ({
     'https://github.com/Rmorr2001/PowerDocu/tree/codex/browser-adapter-restart',
   );
 
-  const dataRules = page.getByRole('alert');
-  await expect(dataRules).toContainText('PowerDocu reads and documents your .msapp entirely inside this browser tab.');
-  await page.getByRole('button', { name: 'Dismiss data rules' }).click();
-  await expect(dataRules).toBeHidden();
+  await expect(page.getByText('Your app file stays local')).toHaveCount(0);
+  await expect(page.locator('[data-progress-state]')).toHaveCount(0);
 
   await page.getByRole('link', { name: 'Instructions' }).click();
   await expect(page).toHaveURL('/instructions');
+  await expect(page.getByRole('region', { name: 'Source & credit' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 1, name: 'Generate a complete app report' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'Generate the report' })).toBeVisible();
   await expect(page.getByText('Your app data is not uploaded')).toBeVisible();
 
   await page.getByRole('link', { name: '.msapp files', exact: true }).click();
   await expect(page).toHaveURL('/instructions/msapp');
+  await expect(page.getByRole('region', { name: 'Source & credit' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 1, name: 'How .msapp files work' })).toBeVisible();
   await expect(page.getByText('References/DataSources.json', { exact: true })).toBeVisible();
 
   await page.getByRole('link', { name: 'PowerDocu', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Source & credit' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'The document pipeline' })).toBeVisible();
   await expect(page.getByText('Microsoft Power Fx', { exact: true })).toBeVisible();
 
   await page.goto('/instructions/webassembly');
+  await expect(page.getByRole('region', { name: 'Source & credit' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 1, name: 'How this WebAssembly app works' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'Where the implementation lives' })).toBeVisible();
   await expect(page.getByText('web/src/powerdocu.worker.ts', { exact: true })).toBeVisible();
@@ -49,23 +52,16 @@ test('generates a safe HTML archive entirely on the page origin', async ({ page 
   const fixturePath = testInfo.outputPath('synthetic.msapp');
   await writeSyntheticMsapp(fixturePath);
   await page.goto('/');
-  await expect(page.getByText('Runtime ready', { exact: true })).toBeVisible({ timeout: 120_000 });
-  await expect(page.locator('[data-active-workflow-step]')).toHaveAttribute('data-active-workflow-step', '1');
-  await expect(page.locator('[data-workflow="upload"]')).toHaveAttribute('data-progress-state', 'active');
 
   await page.locator('input[type="file"]').setInputFiles(fixturePath);
   await expect(page.getByText('synthetic.msapp', { exact: true })).toBeVisible();
-  await expect(page.locator('[data-active-workflow-step]')).toHaveAttribute('data-active-workflow-step', '2');
-  await expect(page.locator('[data-workflow="output"]')).toHaveAttribute('data-progress-state', 'active');
   await page.getByRole('radio', { name: 'HTML report' }).click();
-  await page.getByRole('button', { name: 'Generate full report' }).click();
-  await expect(page.locator('[data-active-workflow-step]')).toHaveAttribute('data-active-workflow-step', '3');
-  await expect(page.locator('[data-workflow="logs"]')).toHaveAttribute('data-progress-state', 'active');
+  const generateButton = page.getByRole('button', { name: 'Generate full report' });
+  await expect(generateButton).toBeEnabled({ timeout: 120_000 });
+  await generateButton.click();
   const outcome = page.getByRole('heading', { name: /Archive ready|Generation failed/ });
   await expect(outcome).toBeVisible({ timeout: 120_000 });
   expect(await outcome.innerText()).toBe('Archive ready');
-  await expect(page.locator('[data-active-workflow-step]')).toHaveAttribute('data-active-workflow-step', '4');
-  await expect(page.locator('[data-workflow="download"]')).toHaveAttribute('data-progress-state', 'active');
 
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download complete HTML ZIP' }).click();
@@ -86,10 +82,11 @@ test('generates a Word report with local SVG and PNG diagram parts', async ({ pa
   const fixturePath = testInfo.outputPath('synthetic.msapp');
   await writeSyntheticMsapp(fixturePath);
   await page.goto('/');
-  await expect(page.getByText('Runtime ready', { exact: true })).toBeVisible({ timeout: 120_000 });
 
   await page.locator('input[type="file"]').setInputFiles(fixturePath);
-  await page.getByRole('button', { name: 'Generate full report' }).click();
+  const generateButton = page.getByRole('button', { name: 'Generate full report' });
+  await expect(generateButton).toBeEnabled({ timeout: 120_000 });
+  await generateButton.click();
   const outcome = page.getByRole('heading', { name: /Archive ready|Generation failed/ });
   await expect(outcome).toBeVisible({ timeout: 120_000 });
   expect(await outcome.innerText()).toBe('Archive ready');
@@ -121,16 +118,17 @@ test('cancels by replacing the Worker and recovers for the next run', async ({ p
   const fixturePath = testInfo.outputPath('synthetic.msapp');
   await writeSyntheticMsapp(fixturePath);
   await page.goto('/');
-  await expect(page.getByText('Runtime ready', { exact: true })).toBeVisible({ timeout: 120_000 });
   await page.locator('input[type="file"]').setInputFiles(fixturePath);
   await page.getByRole('radio', { name: 'HTML report' }).click();
 
-  await page.getByRole('button', { name: 'Generate full report' }).click();
+  const generateButton = page.getByRole('button', { name: 'Generate full report' });
+  await expect(generateButton).toBeEnabled({ timeout: 120_000 });
+  await generateButton.click();
   await page.getByRole('button', { name: 'Cancel generation' }).click();
   await expect(page.getByRole('heading', { name: 'Cancelled — runtime restarted' })).toBeVisible();
-  await expect(page.getByText('Runtime ready', { exact: true })).toBeVisible({ timeout: 120_000 });
+  await expect(generateButton).toBeEnabled({ timeout: 120_000 });
 
-  await page.getByRole('button', { name: 'Generate full report' }).click();
+  await generateButton.click();
   const outcome = page.getByRole('heading', { name: /Archive ready|Generation failed/ });
   await expect(outcome).toBeVisible({ timeout: 120_000 });
   expect(await outcome.innerText()).toBe('Archive ready');
