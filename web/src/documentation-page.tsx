@@ -17,10 +17,10 @@ import {
 import { Link, useLocation } from 'react-router-dom';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { SiteHeader } from '@/site-header';
+import { SourceCredit } from '@/source-credit';
 
 type DocumentationPageKey = 'instructions' | 'msapp' | 'powerdocu' | 'webassembly';
 
@@ -28,9 +28,7 @@ type DocumentationEntry = {
   key: DocumentationPageKey;
   path: string;
   label: string;
-  eyebrow: string;
   title: string;
-  description: string;
   icon: LucideIcon;
   facts: Array<{ label: string; value: string }>;
 };
@@ -40,9 +38,7 @@ const documentationEntries: DocumentationEntry[] = [
     key: 'instructions',
     path: '/instructions',
     label: 'Instructions',
-    eyebrow: 'Start here',
     title: 'Generate a complete app report',
-    description: 'Export one Canvas App, run PowerDocu locally, and download the full Word or HTML report.',
     icon: BookOpenIcon,
     facts: [
       { label: 'Input', value: 'Standalone .msapp' },
@@ -54,9 +50,7 @@ const documentationEntries: DocumentationEntry[] = [
     key: 'msapp',
     path: '/instructions/msapp',
     label: '.msapp files',
-    eyebrow: 'File format',
     title: 'How .msapp files work',
-    description: 'A Canvas App download is a structured package containing metadata, controls, formulas, references, and assets.',
     icon: FileArchiveIcon,
     facts: [
       { label: 'Container', value: 'Compressed package' },
@@ -68,9 +62,7 @@ const documentationEntries: DocumentationEntry[] = [
     key: 'powerdocu',
     path: '/instructions/powerdocu',
     label: 'PowerDocu',
-    eyebrow: 'Document engine',
     title: 'How PowerDocu works',
-    description: 'The original C# parser turns a Canvas App package into an app model, report content, and navigation diagrams.',
     icon: WorkflowIcon,
     facts: [
       { label: 'Parser', value: 'Original PowerDocu C#' },
@@ -82,9 +74,7 @@ const documentationEntries: DocumentationEntry[] = [
     key: 'webassembly',
     path: '/instructions/webassembly',
     label: 'WebAssembly app',
-    eyebrow: 'Browser runtime',
     title: 'How this WebAssembly app works',
-    description: 'React coordinates a dedicated worker running .NET, Graphviz, PNG rendering, and a temporary virtual filesystem.',
     icon: BoxesIcon,
     facts: [
       { label: 'Runtime', value: '.NET 10 WebAssembly' },
@@ -106,7 +96,7 @@ export function DocumentationPage({ page }: { page: DocumentationPageKey }) {
     <main className="min-h-screen bg-background text-foreground">
       <SiteHeader
         actions={(
-          <Button asChild variant="ghost" size="sm">
+          <Button asChild variant="ghost" size="nav" className="w-full justify-start">
             <Link to="/">
               <AppWindowIcon data-icon="inline-start" />
               Open app
@@ -114,6 +104,9 @@ export function DocumentationPage({ page }: { page: DocumentationPageKey }) {
           </Button>
         )}
       />
+
+      <SourceCredit className="mx-auto max-w-5xl px-5 py-8" />
+      <Separator />
 
       <div className="mx-auto grid max-w-5xl gap-10 px-5 py-10 md:grid-cols-[13rem_minmax(0,1fr)] md:py-14">
         <aside className="md:sticky md:top-8 md:self-start">
@@ -136,16 +129,12 @@ export function DocumentationPage({ page }: { page: DocumentationPageKey }) {
         </aside>
 
         <article className="route-enter min-w-0" key={entry.path}>
-          <header>
-            <div className="flex items-center gap-3 text-primary">
-              <PageIcon aria-hidden="true" />
-              <Badge variant="outline">{entry.eyebrow}</Badge>
-            </div>
-            <h1 className="mt-5 max-w-3xl text-4xl font-semibold tracking-[-0.035em] sm:text-5xl">{entry.title}</h1>
-            <p className="mt-5 max-w-3xl text-lg leading-8 text-muted-foreground">{entry.description}</p>
+          <header className="flex items-center gap-5">
+            <PageIcon className="size-9 shrink-0 text-primary sm:size-10" aria-hidden="true" />
+            <h1 className="text-4xl font-semibold tracking-[-0.035em] sm:text-5xl">{entry.title}</h1>
           </header>
 
-          <dl className="mt-10 grid gap-6 sm:grid-cols-3" aria-label="At a glance">
+          <dl className="mt-8 grid gap-6 sm:grid-cols-3" aria-label="At a glance">
             {entry.facts.map((fact) => (
               <div key={fact.label}>
                 <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{fact.label}</dt>
@@ -218,10 +207,10 @@ function InstructionsDocumentation() {
       <DocSection index="02" title="Generate the report">
         <StepList
           steps={[
-            { title: 'Upload', description: 'Choose or drop the .msapp on the first section. A valid file advances the progress rail to Output.' },
+            { title: 'Upload', description: 'Choose or drop the .msapp in the first section. A valid file enables the report controls in Output.' },
             { title: 'Choose Word or HTML', description: 'Word creates a portable .docx report. HTML creates a linked set of pages suitable for local browsing or static hosting.' },
-            { title: 'Generate', description: 'Select Generate full report. The rail moves to Logs while the local parser, document builders, and diagram engines run.' },
-            { title: 'Confirm completion', description: 'When the log reaches Complete and the archive is ready, the rail advances to Download.' },
+            { title: 'Generate', description: 'Select Generate full report. Logs show the local parser, document builders, and diagram engines as they run.' },
+            { title: 'Confirm completion', description: 'When the archive is ready, the complete ZIP and folder actions become available in Download.' },
           ]}
         />
         <p>The browser always generates the full Canvas App report. There are no depth or section controls on the landing page.</p>
@@ -472,9 +461,9 @@ function WebAssemblyDocumentation() {
 function DocSection({ index, title, children }: { index: string; title: string; children: ReactNode }) {
   return (
     <section aria-labelledby={`doc-section-${index}`}>
-      <div className="flex items-baseline gap-3">
-        <span className="font-mono text-[11px] text-primary">{index}</span>
-        <h2 id={`doc-section-${index}`} className="text-2xl font-semibold tracking-tight">{title}</h2>
+      <div className="flex items-center gap-4">
+        <span className="font-mono text-3xl font-medium leading-none tracking-tighter text-primary sm:text-4xl">{index}</span>
+        <h2 id={`doc-section-${index}`} className="text-3xl font-semibold tracking-tight sm:text-4xl">{title}</h2>
       </div>
       <div className="mt-5 flex max-w-3xl flex-col gap-5 text-[15px] leading-7 text-muted-foreground [&_code]:rounded [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.88em] [&_code]:text-foreground [&_strong]:font-medium [&_strong]:text-foreground">
         {children}
@@ -487,10 +476,10 @@ function StepList({ steps }: { steps: Array<{ title: string; description: string
   return (
     <ol className="flex flex-col gap-5">
       {steps.map((step, index) => (
-        <li key={step.title} className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3">
-          <span className="grid size-8 place-items-center rounded-full bg-primary/10 font-mono text-xs text-primary">{String(index + 1).padStart(2, '0')}</span>
+        <li key={step.title} className="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-4">
+          <span className="grid size-11 place-items-center rounded-full bg-primary/10 font-mono text-sm font-medium text-primary">{String(index + 1).padStart(2, '0')}</span>
           <div>
-            <h3 className="font-medium text-foreground">{step.title}</h3>
+            <h3 className="text-lg font-medium text-foreground">{step.title}</h3>
             <p className="mt-1">{step.description}</p>
           </div>
         </li>
