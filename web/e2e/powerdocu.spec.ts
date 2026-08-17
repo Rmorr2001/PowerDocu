@@ -11,9 +11,9 @@ test('uses real documentation routes and exposes the local-data rules', async ({
     'href',
     'https://github.com/modery/PowerDocu',
   );
-  await expect(page.getByRole('link', { name: 'This Repo' })).toHaveAttribute(
+  await expect(page.getByRole('link', { name: 'Browser App Source' })).toHaveAttribute(
     'href',
-    'https://github.com/Rmorr2001/PowerDocu',
+    'https://github.com/Rmorr2001/PowerDocu/tree/codex/browser-adapter-restart',
   );
 
   const dataRules = page.getByRole('alert');
@@ -23,14 +23,23 @@ test('uses real documentation routes and exposes the local-data rules', async ({
 
   await page.getByRole('link', { name: 'Instructions' }).click();
   await expect(page).toHaveURL('/instructions');
-  await expect(page.getByRole('heading', { level: 1, name: 'Instructions' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Generate a complete app report' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Generate the report' })).toBeVisible();
+  await expect(page.getByText('Your app data is not uploaded')).toBeVisible();
 
-  await page.getByRole('link', { name: '.msapp files' }).click();
+  await page.getByRole('link', { name: '.msapp files', exact: true }).click();
   await expect(page).toHaveURL('/instructions/msapp');
   await expect(page.getByRole('heading', { level: 1, name: 'How .msapp files work' })).toBeVisible();
+  await expect(page.getByText('References/DataSources.json', { exact: true })).toBeVisible();
+
+  await page.getByRole('link', { name: 'PowerDocu', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 2, name: 'The document pipeline' })).toBeVisible();
+  await expect(page.getByText('Microsoft Power Fx', { exact: true })).toBeVisible();
 
   await page.goto('/instructions/webassembly');
   await expect(page.getByRole('heading', { level: 1, name: 'How this WebAssembly app works' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Where the implementation lives' })).toBeVisible();
+  await expect(page.getByText('web/src/powerdocu.worker.ts', { exact: true })).toBeVisible();
 });
 
 test('generates a safe HTML archive entirely on the page origin', async ({ page }, testInfo) => {

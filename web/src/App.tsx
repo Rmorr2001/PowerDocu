@@ -312,12 +312,15 @@ function WorkflowPage() {
               </a>
             </Button>
             <Button asChild variant="outline" size="panel" className="min-w-0 justify-start text-left">
-              <a href="https://github.com/Rmorr2001/PowerDocu" target="_blank" rel="noreferrer">
+              <a href="https://github.com/Rmorr2001/PowerDocu/tree/codex/browser-adapter-restart" target="_blank" rel="noreferrer">
                 <FileCode2Icon data-icon="inline-start" />
                 <span className="min-w-0 flex-1">
-                  <span className="block font-medium">This Repo</span>
+                  <span className="block font-medium">Browser App Source</span>
                   <span className="mt-1 block text-xs font-normal leading-relaxed text-muted-foreground">
-                    Browser and WebAssembly adapter source.
+                    React UI in web/ + WebAssembly runtime.
+                  </span>
+                  <span className="mt-1 block truncate font-mono text-[10px] font-normal text-muted-foreground">
+                    codex/browser-adapter-restart
                   </span>
                 </span>
                 <ExternalLinkIcon data-icon="inline-end" />
